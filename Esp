@@ -1,0 +1,70 @@
+local players = game:GetService("Players")
+local tweenService = game:GetService("TweenService")
+local runService = game:GetService("RunService")
+local localPlayer = players.LocalPlayer
+
+-- Cache des highlights pour optimisation
+local highlightCache = {}
+
+-- Fonction pour obtenir un Highlight depuis le cache ou en créer un nouveau
+local function getHighlight(character)
+    if highlightCache[character] then
+        return highlightCache[character]
+    end
+
+    local highlight = Instance.new("Highlight")
+    highlight.FillTransparency = 0.2
+    highlight.OutlineTransparency = 0
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- Blanc pour le contour
+    highlight.Parent = character
+    highlightCache[character] = highlight
+    return highlight
+end
+
+-- Fonction pour changer les couleurs de façon cyclique (arc-en-ciel)
+local function cycleColors(highlight)
+    local colorIndex = 0
+    runService.Heartbeat:Connect(function()
+        -- Passe progressivement entre les différentes teintes
+        colorIndex = (colorIndex + 1) % 360
+        highlight.FillColor = Color3.fromHSV(colorIndex / 360, 1, 1) -- Couleur dynamique
+    end)
+end
+
+-- Fonction pour surligner les personnages
+local function highlightCharacter(character, isEnemy)
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
+    if humanoidRootPart then
+        local highlight = getHighlight(character)
+        cycleColors(highlight) -- Applique l'effet multicolore
+    end
+end
+
+-- Détection des équipes et application des surlignages
+local function onCharacterAdded(character, player)
+    -- Applique le surlignage
+    highlightCharacter(character, player.Team ~= localPlayer.Team)
+end
+
+-- Gestion des personnages lors de l'ajout d'un joueur
+local function onPlayerAdded(newPlayer)
+    if newPlayer ~= localPlayer then
+        -- Connecte la détection lorsque le personnage est ajouté
+        newPlayer.CharacterAdded:Connect(function(character)
+            onCharacterAdded(character, newPlayer)
+        end)
+
+        -- Si le personnage est déjà chargé
+        if newPlayer.Character then
+            onCharacterAdded(newPlayer.Character, newPlayer)
+        end
+    end
+end
+
+-- Application pour tous les joueurs actuels
+for _, player in pairs(players:GetPlayers()) do
+    onPlayerAdded(player)
+end
+
+-- Gestion des nouveaux joueurs
+players.PlayerAdded:Connect(onPlayerAdded)
